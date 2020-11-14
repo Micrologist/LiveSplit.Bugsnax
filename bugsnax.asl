@@ -12,6 +12,10 @@ state("Bugsnax", "1.03.56017")
 
 startup
 {
+    vars.startAfterLoad = false;
+    vars.splitNextLoad = false;
+    settings.Add("endSplit", true, "Split on beating the game");
+    settings.Add("mapSplit", true, "Split on all map transitions");
     if (timer.CurrentTimingMethod == TimingMethod.RealTime)
     {
         var timingMessage = MessageBox.Show(
@@ -26,9 +30,6 @@ startup
             timer.CurrentTimingMethod = TimingMethod.GameTime;
         }
     }
-
-    vars.startAfterLoad = false;
-    vars.splitNextLoad = false;
 }
 
 init
@@ -60,27 +61,32 @@ update
         vars.startAfterLoad = false;
     else
         vars.splitNextLoad = false;
-    
-    if(current.map != old.map)
-        print("Map Transition: "+old.map+" -> "+current.map);
 }
 
 start
 {
     if (current.map == "Content/Levels/Forest_Tutorial.irr" && old.map == "Content/Levels/MainScreen_Background.irr")
         vars.startAfterLoad = true;
-
     return ((!old.playing && current.playing) && vars.startAfterLoad);
 }
 
 split
 {
-    if(current.map != old.map)
+    if((settings["mapSplit"] && current.map != old.map) || (settings["endSplit"] && current.map != old.map && current.map == "Content/Levels/Credits.irr"))
         vars.splitNextLoad = true;
 
     if(!current.playing && old.playing && vars.splitNextLoad)
     {
         vars.splitNextLoad = false;
+        return true;
+    }
+}
+
+reset
+{
+    if((current.map == "Content/Levels/Forest_Tutorial.irr" && old.map == "Content/Levels/MainScreen_Background.irr"))
+    {
+        vars.startAfterLoad = true;
         return true;
     }
 }
