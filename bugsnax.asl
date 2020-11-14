@@ -1,11 +1,13 @@
 state("Bugsnax", "1.03.55971")
 {
-    bool playing: 0x0065D6E8, 0x2A2;
+    bool playing : 0x0065D6E8, 0x2A2;
+    string150 map : 0x0065D6E8, 0x1C8, 0xA0, 0x0;
 }
 
 state("Bugsnax", "1.03.56017")
 {
     bool playing: 0x00658368, 0x2A2;
+    string150 map : 0x00658368, 0x1C8, 0xA0, 0x0;
 }
 
 startup
@@ -24,6 +26,9 @@ startup
             timer.CurrentTimingMethod = TimingMethod.GameTime;
         }
     }
+
+    vars.startAfterLoad = false;
+    vars.splitNextLoad = false;
 }
 
 init
@@ -44,8 +49,38 @@ init
     }
 }
 
-
 isLoading
 {
     return !current.playing;
+}
+
+update
+{
+    if(timer.CurrentPhase == TimerPhase.Running)
+        vars.startAfterLoad = false;
+    else
+        vars.splitNextLoad = false;
+    
+    if(current.map != old.map)
+        print("Map Transition: "+old.map+" -> "+current.map);
+}
+
+start
+{
+    if (current.map == "Content/Levels/Forest_Tutorial.irr" && old.map == "Content/Levels/MainScreen_Background.irr")
+        vars.startAfterLoad = true;
+
+    return ((!old.playing && current.playing) && vars.startAfterLoad);
+}
+
+split
+{
+    if(current.map != old.map)
+        vars.splitNextLoad = true;
+
+    if(!current.playing && old.playing && vars.splitNextLoad)
+    {
+        vars.splitNextLoad = false;
+        return true;
+    }
 }
