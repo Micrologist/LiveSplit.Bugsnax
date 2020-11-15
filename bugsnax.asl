@@ -15,7 +15,7 @@ startup
     vars.startAfterLoad = false;
     vars.splitNextLoad = false;
     settings.Add("endSplit", true, "Split on beating the game");
-    settings.Add("mapSplit", true, "Split on all map transitions");
+    settings.Add("mapSplit", false, "Split on all map transitions");
     if (timer.CurrentTimingMethod == TimingMethod.RealTime)
     {
         var timingMessage = MessageBox.Show(
