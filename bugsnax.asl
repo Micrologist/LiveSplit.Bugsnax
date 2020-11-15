@@ -72,7 +72,10 @@ start
 
 split
 {
-    if((settings["mapSplit"] && current.map != old.map && old.map != "Content/Levels/MainScreen_Background.irr" && current.map != "Content/Levels/MainScreen_Background.irr") || (settings["endSplit"] && current.map != old.map && current.map == "Content/Levels/Credits.irr"))
+    if(settings["endSplit"] && !current.playing && current.map == "Content/Levels/Credits.irr")
+        return true;
+
+    if(settings["mapSplit"] && current.map != old.map && old.map != "Content/Levels/MainScreen_Background.irr" && current.map != "Content/Levels/MainScreen_Background.irr")
         vars.splitNextLoad = true;
 
     if(!current.playing && old.playing && vars.splitNextLoad)
