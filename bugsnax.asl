@@ -10,6 +10,12 @@ state("Bugsnax", "1.03.56017")
     string150 map : 0x00658368, 0x1C8, 0xA0, 0x0;
 }
 
+state("Bugsnax", "1.03.56076")
+{
+    bool playing: 0x0065B3E8, 0x2A2;
+    string150 map : 0x0065B3E8, 0x1C8, 0xA0, 0x0;
+}
+
 startup
 {
     vars.startAfterLoad = false;
@@ -42,6 +48,9 @@ init
             break;
         case 7180288:
             version = "1.03.56017";
+            break;
+        case 7192576:
+            version = "1.03.56076";
             break;
         default:
             version = "Unsupported - " + moduleSize.ToString();
