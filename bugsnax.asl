@@ -1,18 +1,18 @@
 state("Bugsnax", "1.03.55971")
 {
-    bool playing : 0x0065D6E8, 0x2A2;
+    bool loading : 0x0065D6E8, 0x19C;
     string150 map : 0x0065D6E8, 0x1C8, 0xA0, 0x0;
 }
 
 state("Bugsnax", "1.03.56017")
 {
-    bool playing: 0x00658368, 0x2A2;
+    bool loading: 0x00658368, 0x19C;
     string150 map : 0x00658368, 0x1C8, 0xA0, 0x0;
 }
 
 state("Bugsnax", "1.03.56076")
 {
-    bool playing: 0x0065B3E8, 0x2A2;
+    bool loading: 0x0065B3E8, 0x19C;
     string150 map : 0x0065B3E8, 0x1C8, 0xA0, 0x0;
 }
 
@@ -61,7 +61,7 @@ init
 
 isLoading
 {
-    return !current.playing;
+    return current.loading;
 }
 
 update
@@ -76,18 +76,18 @@ start
 {
     if (current.map == "Content/Levels/Forest_Tutorial.irr" && old.map == "Content/Levels/MainScreen_Background.irr")
         vars.startAfterLoad = true;
-    return ((!old.playing && current.playing) && vars.startAfterLoad);
+    return ((old.loading && !current.loading) && vars.startAfterLoad);
 }
 
 split
 {
-    if(settings["endSplit"] && !current.playing && current.map == "Content/Levels/Credits.irr")
+    if(settings["endSplit"] && current.loading && current.map == "Content/Levels/Credits.irr")
         return true;
 
     if(settings["mapSplit"] && current.map != old.map && old.map != "Content/Levels/MainScreen_Background.irr" && current.map != "Content/Levels/MainScreen_Background.irr")
         vars.splitNextLoad = true;
 
-    if(!current.playing && old.playing && vars.splitNextLoad)
+    if(current.loading && !old.playing && vars.splitNextLoad)
     {
         vars.splitNextLoad = false;
         return true;
