@@ -87,7 +87,7 @@ split
     if(settings["mapSplit"] && current.map != old.map && old.map != "Content/Levels/MainScreen_Background.irr" && current.map != "Content/Levels/MainScreen_Background.irr")
         vars.splitNextLoad = true;
 
-    if(current.loading && !old.playing && vars.splitNextLoad)
+    if(current.loading && !old.loading && vars.splitNextLoad)
     {
         vars.splitNextLoad = false;
         return true;
