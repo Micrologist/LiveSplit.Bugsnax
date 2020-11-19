@@ -20,6 +20,8 @@ startup
 {
     vars.startAfterLoad = false;
     vars.splitNextLoad = false;
+    vars.sbVisited = false;
+    vars.ignoreLoads = false;
     settings.Add("endSplit", true, "Split on beating the game");
     settings.Add("mapSplit", false, "Split on all map transitions");
     if (timer.CurrentTimingMethod == TimingMethod.RealTime)
@@ -61,15 +63,30 @@ init
 
 isLoading
 {
-    return (current.loading > 0 && current.map != "Content/Levels/Beach_Inner_End.irr") || (current.loading > 1 && current.map == "Content/Levels/Beach_Inner_End.irr");
+    return ((current.loading > 0 && current.map != "Content/Levels/Beach_Inner_End.irr") || (current.loading > 1 && current.map == "Content/Levels/Beach_Inner_End.irr")) && !vars.ignoreLoads;
 }
 
 update
 {
     if(timer.CurrentPhase == TimerPhase.Running)
+    {
         vars.startAfterLoad = false;
+    }
     else
+    {
         vars.splitNextLoad = false;
+        vars.sbVisited = false;
+        vars.ignoreLoads = false;
+    }
+
+    if(current.map == "Content/Levels/Camp.irr" && !vars.sbVisited && current.loading == 1 && old.loading == 2)
+    {
+        vars.ignoreLoads = true;
+        vars.sbVisited = true;
+    }
+
+    if(vars.ignoreLoads && current.loading == 0 && old.loading == 1)
+        vars.ignoreLoads = false;
 }
 
 start
