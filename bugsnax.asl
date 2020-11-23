@@ -22,6 +22,12 @@ state("Bugsnax", "1.04.56123")
     string150 map : 0x0065C3E8, 0x1C8, 0xA0, 0x0;
 }
 
+state("Bugsnax", "1.04.56203")
+{
+    int loading: 0x0065D3E8, 0x19C;
+    string150 map : 0x0065D3E8, 0x1C8, 0xA0, 0x0;
+}
+
 
 startup
 {
@@ -50,10 +56,25 @@ startup
 init
 {
     int moduleSize = modules.First().ModuleMemorySize;
+    byte[] exeMD5HashBytes = new byte[0];
+    using (var md5 = System.Security.Cryptography.MD5.Create())
+    {
+        using (var s = File.Open(modules.First().FileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        {
+            exeMD5HashBytes = md5.ComputeHash(s); 
+        } 
+    }
+    var MD5Hash = exeMD5HashBytes.Select(x => x.ToString("X2")).Aggregate((a, b) => a + b);
+    print(moduleSize.ToString());
+    print(MD5Hash.ToString());
+
     switch (moduleSize)
     {
         case 7200768:
-            version = "1.03.55971";
+            if(MD5Hash.ToString() == "438E7E6FE6C6A5D465E3E01A6F3AA413")
+                version = "1.04.56203";
+            else
+                version = "1.03.55971";
             break;
         case 7180288:
             version = "1.03.56017";
@@ -101,7 +122,7 @@ update
 
 start
 {
-    if (current.map == "Content/Levels/Forest_Tutorial.irr" && old.map == "Content/Levels/MainScreen_Background.irr")
+    if (current.map == "Content/Levels/Forest_Tutorial.irr" && (old.map == "Content/Levels/MainScreen_Background.irr" || old.map == null))
         vars.startAfterLoad = true;
     return ((old.loading > 0 && current.loading == 0) && vars.startAfterLoad);
 }
