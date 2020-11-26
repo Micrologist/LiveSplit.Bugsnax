@@ -28,6 +28,12 @@ state("Bugsnax", "1.04.56203")
     string150 map : 0x0065D3E8, 0x1C8, 0xA0, 0x0;
 }
 
+state("Bugsnax", "1.04.56253")
+{
+    int loading: 0x006593E8, 0x19C;
+    string150 map : 0x006593E8, 0x1C8, 0xA0, 0x0;
+}
+
 
 startup
 {
@@ -84,6 +90,9 @@ init
             break;
         case 7196672:
             version = "1.04.56123";
+            break;
+        case 7184384:
+            version = "1.04.56253";
             break;
         default:
             version = "Unsupported - " + moduleSize.ToString();
