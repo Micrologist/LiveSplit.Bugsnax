@@ -1,39 +1,4 @@
-state("Bugsnax", "1.03.55971")
-{
-    int loading : 0x0065D6E8, 0x19C;
-    string150 map : 0x0065D6E8, 0x1C8, 0xA0, 0x0;
-}
-
-state("Bugsnax", "1.03.56017")
-{
-    int loading: 0x00658368, 0x19C;
-    string150 map : 0x00658368, 0x1C8, 0xA0, 0x0;
-}
-
-state("Bugsnax", "1.03.56076")
-{
-    int loading: 0x0065B3E8, 0x19C;
-    string150 map : 0x0065B3E8, 0x1C8, 0xA0, 0x0;
-}
-
-state("Bugsnax", "1.04.56123")
-{
-    int loading: 0x0065C3E8, 0x19C;
-    string150 map : 0x0065C3E8, 0x1C8, 0xA0, 0x0;
-}
-
-state("Bugsnax", "1.04.56203")
-{
-    int loading: 0x0065D3E8, 0x19C;
-    string150 map : 0x0065D3E8, 0x1C8, 0xA0, 0x0;
-}
-
-state("Bugsnax", "1.04.56253")
-{
-    int loading: 0x006593E8, 0x19C;
-    string150 map : 0x006593E8, 0x1C8, 0xA0, 0x0;
-}
-
+state("Bugsnax"){}
 
 startup
 {
@@ -43,6 +8,8 @@ startup
     vars.ignoreLoads = false;
     settings.Add("endSplit", true, "Split on beating the game");
     settings.Add("mapSplit", false, "Split on all map transitions");
+    settings.Add("questSplit", false, "Split on last battle quests");
+
     if (timer.CurrentTimingMethod == TimingMethod.RealTime)
     {
         var timingMessage = MessageBox.Show(
@@ -61,53 +28,46 @@ startup
 
 init
 {
-    int moduleSize = modules.First().ModuleMemorySize;
-    byte[] exeMD5HashBytes = new byte[0];
-    using (var md5 = System.Security.Cryptography.MD5.Create())
-    {
-        using (var s = File.Open(modules.First().FileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-        {
-            exeMD5HashBytes = md5.ComputeHash(s); 
-        } 
-    }
-    var MD5Hash = exeMD5HashBytes.Select(x => x.ToString("X2")).Aggregate((a, b) => a + b);
-    print(moduleSize.ToString());
-    print(MD5Hash.ToString());
+    var scanner = new SignatureScanner(game, game.MainModule.BaseAddress, game.MainModule.ModuleMemorySize);
 
-    switch (moduleSize)
-    {
-        case 7200768:
-            if(MD5Hash.ToString() == "438E7E6FE6C6A5D465E3E01A6F3AA413")
-                version = "1.04.56203";
-            else
-                version = "1.03.55971";
-            break;
-        case 7180288:
-            version = "1.03.56017";
-            break;
-        case 7192576:
-            version = "1.03.56076";
-            break;
-        case 7196672:
-            version = "1.04.56123";
-            break;
-        case 7184384:
-            version = "1.04.56253";
-            break;
-        default:
-            version = "Unsupported - " + moduleSize.ToString();
-            MessageBox.Show("This game version is currently not supported.", "LiveSplit Auto Splitter - Unsupported Game Version");
-            break;
-    }
+    // find a piece of code that will reference the game object
+    var sigGameObjectFinder = new SigScanTarget(0, "488d0d????????e8????????488b0d????????84c0");
+    var baseGameObjectFinder = scanner.Scan(sigGameObjectFinder);
+
+    // reference is relative to RIP, so we need to do some math
+    var relAdress = game.ReadBytes(baseGameObjectFinder + 3, 4);
+    var relAddressVal = BitConverter.ToInt32(relAdress, 0);
+    var baseGameObject = baseGameObjectFinder + relAddressVal + 7;
+
+    // base_ will now hold the base for the pointers
+    var base_ = baseGameObject + 0x178;
+
+    // this will find the Screens object from data that exists before it
+    var sigQuest1Base = new SigScanTarget(0x10,"FDF1D8FFCFA762FF854C0DFF00000000");
+    var baseQuest1 = scanner.Scan(sigQuest1Base);
+
+    vars.quests = new string[] {"Help Shelda and Floofty!", "Help Chandlo and Snorpy!", "Help Beffica and Cromdo!", "Help Wiggle and Gramble!", "Help Wambus and Triffany!"};
+
+    vars.watchers = new MemoryWatcherList();
+    vars.watchers.Add(new MemoryWatcher<int>(new DeepPointer(base_, 0x19C)) { Name = "loading" });
+    vars.watchers.Add(new StringWatcher(new DeepPointer(base_,0x1C8, 0xA0, 0x0), 150) { Name = "map" });
+    vars.watchers.Add(new StringWatcher(new DeepPointer(baseQuest1, 0x8, 0xab8, 0x30, 0x30, 0xf68, 0x548, 0x0), 30*2) { Name = "quest1" });
+    vars.lastQuest = "";
 }
 
 isLoading
 {
-    return ((current.loading > 0 && current.map != "Content/Levels/Beach_Inner_End.irr") || (current.loading > 1 && current.map == "Content/Levels/Beach_Inner_End.irr")) && !vars.ignoreLoads;
+    return (
+            (vars.watchers["loading"].Current > 0 && vars.watchers["map"].Current != "Content/Levels/Beach_Inner_End.irr") 
+                || (vars.watchers["loading"].Current > 1 && vars.watchers["map"].Current == "Content/Levels/Beach_Inner_End.irr")
+                ) && !vars.ignoreLoads;
 }
+
 
 update
 {
+    vars.watchers.UpdateAll(game);
+
     if(timer.CurrentPhase == TimerPhase.Running)
     {
         vars.startAfterLoad = false;
@@ -119,41 +79,60 @@ update
         vars.ignoreLoads = false;
     }
 
-    if(current.map == "Content/Levels/Camp.irr" && !vars.sbVisited && current.loading == 1 && old.loading == 2)
+    if(vars.watchers["map"].Current == "Content/Levels/Camp.irr" && !vars.sbVisited && vars.watchers["loading"].Current == 1 && vars.watchers["loading"].Old == 2)
     {
         vars.ignoreLoads = true;
         vars.sbVisited = true;
     }
 
-    if(vars.ignoreLoads && current.loading == 0 && old.loading == 1)
+    if(vars.ignoreLoads && vars.watchers["loading"].Current == 0 && vars.watchers["loading"].Old == 1)
         vars.ignoreLoads = false;
+
+
+    vars.doQuestSplit = false;
+
+    if (vars.watchers["map"].Current == "Content/Levels/FinalBattle.irr" && Array.IndexOf(vars.quests, vars.watchers["quest1"].Current) >= 0)
+    {
+        
+        // print(vars.watchers["quest1"].Current + " - " + vars.lastQuest);
+
+        if (vars.watchers["quest1"].Current != vars.lastQuest)
+        {
+            vars.doQuestSplit = true;
+            vars.lastQuest = vars.watchers["quest1"].Current;
+        }
+    }  
 }
 
 start
 {
-    if (current.map == "Content/Levels/Forest_Tutorial.irr" && (old.map == "Content/Levels/MainScreen_Background.irr" || old.map == null))
+    if (vars.watchers["map"].Current == "Content/Levels/Forest_Tutorial.irr" && (vars.watchers["map"].Old == "Content/Levels/MainScreen_Background.irr" || vars.watchers["map"].Old == null))
         vars.startAfterLoad = true;
-    return ((old.loading > 0 && current.loading == 0) && vars.startAfterLoad);
+    return ((vars.watchers["loading"].Old > 0 && vars.watchers["loading"].Current == 0) && vars.startAfterLoad);
 }
 
 split
 {
-    if(settings["endSplit"] && current.loading > 0 && current.map == "Content/Levels/Credits.irr")
+    if(settings["endSplit"] && vars.watchers["loading"].Current > 0 && vars.watchers["map"].Current == "Content/Levels/Credits.irr")
         return true;
 
-    if(settings["mapSplit"] && current.map != old.map && old.map != "Content/Levels/MainScreen_Background.irr" && current.map != "Content/Levels/MainScreen_Background.irr")
+    if(settings["mapSplit"] && vars.watchers["map"].Current != vars.watchers["map"].Old && vars.watchers["map"].Old != "Content/Levels/MainScreen_Background.irr" && vars.watchers["map"].Current != "Content/Levels/MainScreen_Background.irr")
         vars.splitNextLoad = true;
 
-    if(current.loading > 0 && old.loading == 0 && vars.splitNextLoad)
+    if(vars.watchers["loading"].Current > 0 && vars.watchers["loading"].Old == 0 && vars.splitNextLoad)
     {
         vars.splitNextLoad = false;
         return true;
     }
+
+    if(settings["questSplit"] && vars.doQuestSplit)
+        return true;
 }
+
 
 reset
 {
-    if((current.map == "Content/Levels/Forest_Tutorial.irr" && old.map == "Content/Levels/MainScreen_Background.irr"))
+    if((vars.watchers["map"].Current == "Content/Levels/Forest_Tutorial.irr" && vars.watchers["map"].Old == "Content/Levels/MainScreen_Background.irr"))
     {
         vars.startAfterLoad = true;
         return true;
